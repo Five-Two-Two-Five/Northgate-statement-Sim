@@ -23,7 +23,7 @@ const DEFAULT_CLIENT: ClientInfo = {
 
 const DEFAULT_CONFIG: SimulationConfig = {
   stmtDate: '2026-05-05',
-  annualRate: 8.25,
+  annualRate: 8,
   vatRate: 15.5,
   vatDate: '2026-01-01',
   bookingFee: 0,
@@ -94,6 +94,8 @@ const getMonthLabel = (date: Date) =>
     year: 'numeric',
   });
 
+const INTEREST_DAY_BASIS = 360;
+
 const calculateMonthlyInstalment = (principal: number, annualRatePercent: number, loanMonths: number) => {
   if (principal <= 0 || loanMonths <= 0) {
     return null;
@@ -162,7 +164,7 @@ export default function App() {
 
     const annualRateDecimal = annualRate / 100;
     const vatRateDecimal = vatRate / 100;
-    const dailyRate = annualRateDecimal / 365;
+    const dailyRate = annualRateDecimal / INTEREST_DAY_BASIS;
     const dueDay = start.getDate();
     const minimumInstalment = calculateMonthlyInstalment(propValue, annualRate, loanMonths);
     const instalmentsDue = monthsElapsed(startDate, stmtDate);
@@ -889,7 +891,7 @@ export default function App() {
                         <div className="space-y-2 text-[11px] leading-relaxed">
                           <p>Interest follows the daily reducing balance method:</p>
                           <ul className="list-disc pl-5">
-                            <li>Closing Balance (day x) x (system rate / 365) = daily interest.</li>
+                            <li>Closing Balance (day x) x (system rate / 360) = daily interest.</li>
                             <li>Daily interest accrues through the month and is capitalised at month-end.</li>
                             <li>Payments reduce principal immediately, lowering future interest exposure.</li>
                           </ul>
