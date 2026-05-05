@@ -27,7 +27,7 @@ const DEFAULT_CONFIG: SimulationConfig = {
   vatRate: 15.5,
   vatDate: '2026-01-01',
   bookingFee: 0,
-  loanTerm: 9.566,
+  loanMonths: 78,
 };
 
 const DEFAULT_PAYMENTS: Payment[] = [
@@ -94,6 +94,22 @@ const getMonthLabel = (date: Date) =>
     year: 'numeric',
   });
 
+const calculateMonthlyInstalment = (principal: number, annualRatePercent: number, loanMonths: number) => {
+  if (principal <= 0 || loanMonths <= 0) {
+    return null;
+  }
+
+  if (annualRatePercent === 0) {
+    return Number((principal / loanMonths).toFixed(2));
+  }
+
+  const monthlyRate = annualRatePercent / 100 / 12;
+  const growthFactor = Math.pow(1 + monthlyRate, loanMonths);
+  const payment = principal * ((monthlyRate * growthFactor) / (growthFactor - 1));
+
+  return Number(payment.toFixed(2));
+};
+
 export default function App() {
   const [client, setClient] = useState(DEFAULT_CLIENT);
   const [config, setConfig] = useState(DEFAULT_CONFIG);
@@ -131,9 +147,9 @@ export default function App() {
 
   const result = useMemo<SimulationResult | null>(() => {
     const {propValue, startDate} = client;
-    const {stmtDate, annualRate, vatRate, vatDate, bookingFee, loanTerm} = config;
+    const {stmtDate, annualRate, vatRate, vatDate, bookingFee, loanMonths} = config;
 
-    if (!startDate || !stmtDate || propValue <= 0 || loanTerm <= 0) {
+    if (!startDate || !stmtDate || propValue <= 0 || loanMonths <= 0) {
       return null;
     }
 
@@ -148,10 +164,12 @@ export default function App() {
     const vatRateDecimal = vatRate / 100;
     const dailyRate = annualRateDecimal / 365;
     const dueDay = start.getDate();
-    const minimumInstalment = Number(
-      ((propValue * annualRateDecimal) / 12 + propValue / (loanTerm * 12)).toFixed(2),
-    );
+    const minimumInstalment = calculateMonthlyInstalment(propValue, annualRate, loanMonths);
     const instalmentsDue = monthsElapsed(startDate, stmtDate);
+
+    if (minimumInstalment === null) {
+      return null;
+    }
 
     let balance = propValue;
     let totalPaid = 0;
@@ -403,12 +421,12 @@ export default function App() {
                   onChange={(event) => setClient({...client, propValue: Number(event.target.value)})}
                 />
               </Field>
-              <Field label="Loan Term (Yrs)">
+              <Field label="Loan Months">
                 <input
                   type="number"
-                  step="0.001"
-                  value={config.loanTerm}
-                  onChange={(event) => setConfig({...config, loanTerm: Number(event.target.value)})}
+                  min="1"
+                  value={config.loanMonths}
+                  onChange={(event) => setConfig({...config, loanMonths: Number(event.target.value)})}
                 />
               </Field>
             </div>
@@ -700,8 +718,8 @@ export default function App() {
                     <div className="grid grid-cols-2 gap-4">
                       <BreakdownCard
                         title="M - Min. Monthly Instalment"
-                        formula="(V x r / 12) + (V / (T x 12))"
-                        logic="Monthly interest floor plus straight-line principal amortisation across the loan term."
+                        formula="P x ((r x (1 + r)^n) / ((1 + r)^n - 1))"
+                        logic="Standard amortized payment using original property value, monthly rate, and manual loan months."
                         result={`$${formatMoney(result.minMonthlyInstalment)}`}
                       />
                       <BreakdownCard

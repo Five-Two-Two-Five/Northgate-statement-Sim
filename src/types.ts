@@ -19,7 +19,7 @@ export interface SimulationConfig {
   vatRate: number;
   vatDate: string;
   bookingFee: number;
-  loanTerm: number;
+  loanMonths: number;
 }
 
 export enum AccountStatus {
