@@ -1,7 +1,7 @@
 import {AnimatePresence, motion} from 'motion/react';
 import {FileSpreadsheet, LayoutDashboard, Printer, Trash2} from 'lucide-react';
 import {type ReactNode, useMemo, useState} from 'react';
-import { utils, writeFile } from 'xlsx';
+import ExcelJS from 'exceljs';
 import {
   AccountStatus,
   type ClientInfo,
@@ -148,74 +148,151 @@ export default function App() {
     setPayments(DEFAULT_PAYMENTS);
   };
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     if (!result) return;
 
-    const wb = utils.book_new();
+    const workbook = new ExcelJS.Workbook();
+    const summarySheet = workbook.addWorksheet('Summary');
+    const ledgerSheet = workbook.addWorksheet('Ledger');
 
-    // Helper to create currency cell
-    const curr = (v: number) => ({v, t: 'n', z: '$#,##0.00'});
-    // Helper to create percentage cell
-    const pct = (v: number) => ({v, t: 'n', z: '0.00"%"'});
-    // Helper to create a formula cell
-    const form = (f: string, z: string = '$#,##0.00') => ({f, t: 'n', z});
+    // Styling Constants
+    const primaryBlue = '1E295B';
+    const accentRed = 'D40000';
+    const lightBlue = 'EBF0FF';
 
-    // 1. Summary Sheet (Inputs & Main Calculations)
-    const summaryData = [
-      [{v: 'NORTHGATE ESTATES - ACCOUNT SIMULATION', t: 's'}],
-      ['Exported on:', new Date().toLocaleString()],
-      [''],
-      [{v: 'INPUT PARAMETERS', t: 's'}],
+    // 1. SUMMARY SHEET SETUP
+    summarySheet.getColumn('A').width = 35;
+    summarySheet.getColumn('B').width = 30;
+
+    // Header
+    const titleCell = summarySheet.getCell('A1');
+    titleCell.value = 'NORTHGATE ESTATES - ACCOUNT SIMULATION';
+    titleCell.font = { name: 'Arial Black', size: 14, color: { argb: primaryBlue } };
+    summarySheet.mergeCells('A1:B1');
+
+    summarySheet.getCell('A2').value = 'Exported on:';
+    summarySheet.getCell('B2').value = new Date().toLocaleString();
+
+    // Section: Input Parameters
+    const inputStart = 4;
+    const inputHeader = summarySheet.getCell(`A${inputStart}`);
+    inputHeader.value = 'INPUT PARAMETERS (EDITABLE)';
+    inputHeader.font = { bold: true, color: { argb: 'FFFFFF' } };
+    inputHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: primaryBlue } };
+    summarySheet.mergeCells(`A${inputStart}:B${inputStart}`);
+
+    const inputs = [
       ['Client Name', client.name],
       ['Start Date', client.startDate], // B6
       ['Statement Date', config.stmtDate], // B7
-      ['Original Property Value', curr(client.propValue)], // B8
-      ['Annual Interest Rate', pct(config.annualRate)], // B9
-      ['Loan Duration (Months)', {v: config.loanMonths, t: 'n'}], // B10
-      ['New VAT Rate', pct(config.vatRate)], // B11
+      ['Original Property Value', client.propValue], // B8
+      ['Annual Interest Rate %', config.annualRate / 100], // B9
+      ['Loan Duration (Months)', config.loanMonths], // B10
+      ['New VAT Rate %', config.vatRate / 100], // B11
       ['VAT Change Date', config.vatDate], // B12
-      [''],
-      [{v: 'LIVE CALCULATIONS', t: 's'}],
-      ['Monthly Instalment (M)', form('ROUND(PMT(B9/1200, B10, -B8), 2)')], // B15
-      ['Instalments Due (N)', form('DATEDIF(B6, B7, "m") + 1', '0')], // B16
-      ['Expected Total (E = N * M)', form('B15 * B16')], // B17
-      ['Total Paid (P)', form('SUM(Ledger!D:D)')], // B18
-      ['Catch-up Amount (E - P)', form('MAX(0, B17 - B18)')], // B19
-      [''],
-      ['VAT Adjustment Amount', form('ROUND(((B8-SUMIFS(Ledger!D:D, Ledger!A:A, "<"&B12))/1.15) * (B11/100 - 0.15), 2)')], // B21
-      ['Revised Property Value', form('B8 + B21')], // B22
-      [''],
-      ['Status', result.status],
-      ['Remaining Balance', form('B22 + SUM(Ledger!C:C) - SUM(Ledger!D:D)')], // B24
     ];
-    const wsSummary = utils.aoa_to_sheet(summaryData);
-    wsSummary['!cols'] = [{wch: 30}, {wch: 30}];
-    utils.book_append_sheet(wb, wsSummary, 'Summary');
 
-    // 2. Ledger Sheet
-    const ledgerHeader = ['Date', 'Details', 'Debit (+)', 'Credit (-)', 'Running Balance'];
-    const ledgerRows = result.ledger.map((entry, idx) => {
-      const rowNum = idx + 2;
-      const dateCell = {v: entry.date, t: 's'}; // Store as string to avoid date parsing issues across Excel versions
-      const detailCell = entry.details;
-      const debitCell = entry.debit !== null ? curr(entry.debit) : {v: 0, t: 'n', z: '$#,##0.00'};
-      const creditCell = entry.credit !== null ? curr(entry.credit) : {v: 0, t: 'n', z: '$#,##0.00'};
-      
-      let balanceCell;
-      if (idx === 0) {
-        balanceCell = curr(entry.balance);
-      } else {
-        balanceCell = form(`E${rowNum - 1}+C${rowNum}-D${rowNum}`);
+    inputs.forEach((input, i) => {
+      const row = summarySheet.getRow(inputStart + 1 + i);
+      row.getCell(1).value = input[0];
+      row.getCell(2).value = input[1];
+      if (typeof input[1] === 'number') {
+        if (input[0].includes('%')) {
+          row.getCell(2).numFmt = '0.00%';
+        } else {
+          row.getCell(2).numFmt = '"$"#,##0.00';
+        }
       }
-
-      return [dateCell, detailCell, debitCell, creditCell, balanceCell];
+      row.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F9FAFB' } };
     });
 
-    const wsLedger = utils.aoa_to_sheet([ledgerHeader, ...ledgerRows]);
-    wsLedger['!cols'] = [{wch: 12}, {wch: 35}, {wch: 15}, {wch: 15}, {wch: 18}];
-    utils.book_append_sheet(wb, wsLedger, 'Ledger');
+    // Section: Live Calculations
+    const calcStart = 14;
+    const calcHeader = summarySheet.getCell(`A${calcStart}`);
+    calcHeader.value = 'LIVE CALCULATIONS';
+    calcHeader.font = { bold: true, color: { argb: 'FFFFFF' } };
+    calcHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: accentRed } };
+    summarySheet.mergeCells(`A${calcStart}:B${calcStart}`);
 
-    writeFile(wb, `Northgate_Statement_${client.name.replace(/\s+/g, '_')}.xlsx`);
+    const calculations = [
+      ['Monthly Instalment (M)', { formula: 'ROUND(PMT(B9/12, B10, -B8), 2)' }], // B15
+      ['Instalments Due (N)', { formula: 'DATEDIF(B6, B7, "m") + 1' }], // B16
+      ['Expected Total (E = N * M)', { formula: 'B15 * B16' }], // B17
+      ['Total Paid (P)', { formula: 'SUM(Ledger!D:D)' }], // B18
+      ['Catch-up Amount (E - P)', { formula: 'MAX(0, B17 - B18)' }], // B19
+      ['VAT Adjustment Amount', { formula: 'ROUND(((B8-SUMIFS(Ledger!D:D, Ledger!A:A, "<"&B12))/1.15) * (B11 - 0.15), 2)' }], // B20
+      ['Revised Property Value', { formula: 'B8 + B20' }], // B21
+      ['Remaining Balance', { formula: 'B21 + SUM(Ledger!C:C) - SUM(Ledger!D:D)' }], // B22
+    ];
+
+    calculations.forEach((calc, i) => {
+      const row = summarySheet.getRow(calcStart + 1 + i);
+      row.getCell(1).value = calc[0];
+      row.getCell(2).value = calc[1];
+      row.getCell(2).numFmt = '"$"#,##0.00';
+      if (calc[0].includes('(N)')) row.getCell(2).numFmt = '0';
+      row.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: lightBlue } };
+      if (calc[0].includes('Catch-up')) {
+        row.getCell(2).font = { bold: true, color: { argb: accentRed } };
+      }
+    });
+
+    // 2. LEDGER SHEET SETUP
+    ledgerSheet.columns = [
+      { header: 'Date', key: 'date', width: 15 },
+      { header: 'Details', key: 'details', width: 40 },
+      { header: 'Debit (+)', key: 'debit', width: 18 },
+      { header: 'Credit (-)', key: 'credit', width: 18 },
+      { header: 'Running Balance', key: 'balance', width: 22 },
+    ];
+
+    // Style Ledger Header
+    ledgerSheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: 'FFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: primaryBlue } };
+      cell.alignment = { horizontal: 'center' };
+    });
+
+    result.ledger.forEach((entry, idx) => {
+      const rowNum = idx + 2;
+      const row = ledgerSheet.addRow({
+        date: entry.date,
+        details: entry.details,
+        debit: entry.debit ?? 0,
+        credit: entry.credit ?? 0,
+      });
+
+      // Balance Formula
+      if (idx === 0) {
+        row.getCell(5).value = entry.balance;
+      } else {
+        row.getCell(5).value = { formula: `E${rowNum - 1}+C${rowNum}-D${rowNum}` };
+      }
+
+      // Formatting
+      row.getCell(1).alignment = { horizontal: 'center' };
+      row.getCell(3).numFmt = '"$"#,##0.00';
+      row.getCell(4).numFmt = '"$"#,##0.00';
+      row.getCell(5).numFmt = '"$"#,##0.00';
+      row.getCell(5).font = { bold: true };
+
+      // Zebra Striping
+      if (idx % 2 === 0) {
+        row.eachCell((cell) => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F9FAFB' } };
+        });
+      }
+    });
+
+    // Generate and download file
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `Northgate_Statement_${client.name.replace(/\s+/g, '_')}.xlsx`;
+    anchor.click();
+    window.URL.revokeObjectURL(url);
   };
 
   const result = useMemo<SimulationResult | null>(() => {
