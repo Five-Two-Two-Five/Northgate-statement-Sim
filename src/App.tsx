@@ -153,34 +153,42 @@ export default function App() {
 
     const wb = utils.book_new();
 
+    // Helper to create currency cell
+    const curr = (v: number) => ({v, t: 'n', z: '$#,##0.00'});
+    // Helper to create number cell
+    const num = (v: number) => ({v, t: 'n'});
+    // Helper to create percentage cell
+    const pct = (v: number) => ({v, t: 'n', z: '0.0"%"'});
+
     // 1. Summary Sheet
     const summaryData = [
-      ['NORTHGATE ESTATES - ACCOUNT SIMULATION'],
+      [{v: 'NORTHGATE ESTATES - ACCOUNT SIMULATION', t: 's'}],
       ['Exported on:', new Date().toLocaleString()],
       [''],
-      ['CLIENT INFORMATION'],
+      [{v: 'CLIENT INFORMATION', t: 's'}],
       ['Name', client.name],
       ['Stand Number', client.standNum],
       ['Stand Size', `${client.standSize} m2`],
       ['Contact', client.contact],
       [''],
-      ['FINANCIAL SUMMARY'],
-      ['Original Property Value', client.propValue],
-      ['Revised Property Value (USD)', result.revisedValue],
-      ['Total Amount Paid (USD)', result.totalPaid],
-      ['Monthly Instalment (Minimum)', result.minMonthlyInstalment],
-      ['Catch-up Amount', result.catchUpAmount],
+      [{v: 'FINANCIAL SUMMARY', t: 's'}],
+      ['Original Property Value', curr(client.propValue)],
+      ['Revised Property Value (USD)', curr(result.revisedValue)],
+      ['Total Amount Paid (USD)', curr(result.totalPaid)],
+      ['Monthly Instalment (Minimum)', curr(result.minMonthlyInstalment)],
+      ['Catch-up Amount', curr(result.catchUpAmount)],
       ['Status', result.status],
-      ['Remaining Balance', result.remainingBalance],
+      ['Remaining Balance', curr(result.remainingBalance)],
       [''],
-      ['CONFIGURATION'],
-      ['Annual Interest Rate', `${config.annualRate}%`],
-      ['VAT Rate', `${config.vatRate}%`],
+      [{v: 'CONFIGURATION', t: 's'}],
+      ['Annual Interest Rate', pct(config.annualRate)],
+      ['VAT Rate', pct(config.vatRate)],
       ['VAT Change Date', config.vatDate],
       ['Loan Duration', `${config.loanMonths} Months`],
       ['Statement Date', config.stmtDate],
     ];
     const wsSummary = utils.aoa_to_sheet(summaryData);
+    wsSummary['!cols'] = [{wch: 30}, {wch: 30}];
     utils.book_append_sheet(wb, wsSummary, 'Summary');
 
     // 2. Ledger Sheet
@@ -188,20 +196,20 @@ export default function App() {
     const ledgerRows = result.ledger.map((entry) => [
       entry.date,
       entry.details,
-      entry.debit ?? 0,
-      entry.credit ?? 0,
-      entry.balance,
+      entry.debit !== null ? curr(entry.debit) : '-',
+      entry.credit !== null ? curr(entry.credit) : '-',
+      curr(entry.balance),
     ]);
     const wsLedger = utils.aoa_to_sheet([ledgerHeader, ...ledgerRows]);
 
     // Auto-size columns for ledger
-    wsLedger['!cols'] = [{wch: 12}, {wch: 30}, {wch: 15}, {wch: 15}, {wch: 18}];
+    wsLedger['!cols'] = [{wch: 12}, {wch: 35}, {wch: 15}, {wch: 15}, {wch: 18}];
 
     utils.book_append_sheet(wb, wsLedger, 'Ledger');
 
     // 3. Formula Guide
     const formulaData = [
-      ['EXCEL FORMULA GUIDE'],
+      [{v: 'EXCEL FORMULA GUIDE', t: 's'}],
       ['Use these formulas to recreate the logic in your own Excel sheet'],
       [''],
       ['Component', 'Formula Logic', 'Description'],
@@ -213,10 +221,13 @@ export default function App() {
       ],
       ['Daily Interest', '=Balance * (AnnualRate / 360)', 'Calculates interest accrued each day (360-day basis)'],
       [''],
-      ['Note:', 'The simulator uses a 360-day convention for interest calculation, common in financial contracts.'],
+      ['VAT Calculation Breakdown:', '', ''],
+      ['1. Net Value', '=RemainingPrincipal / 1.15', 'Extracts net price by removing 15% VAT'],
+      ['2. Adjustment', '=NetValue * (NewRate - 0.15)', 'Applies 0.5% increase to the net portion'],
+      ['3. New Total', '=OriginalValue + Adjustment', 'Final adjusted property value'],
     ];
     const wsFormulas = utils.aoa_to_sheet(formulaData);
-    wsFormulas['!cols'] = [{wch: 20}, {wch: 60}, {wch: 40}];
+    wsFormulas['!cols'] = [{wch: 25}, {wch: 60}, {wch: 50}];
     utils.book_append_sheet(wb, wsFormulas, 'Formula Guide');
 
     writeFile(wb, `Northgate_Statement_${client.name.replace(/\s+/g, '_')}.xlsx`);
