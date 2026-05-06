@@ -79,7 +79,8 @@ const monthsElapsed = (startValue: string, statementValue: string) => {
   const dueDay = startDate.getDate();
 
   let count = 0;
-  let current = buildAlignedDate(startDate.getFullYear(), startDate.getMonth(), dueDay);
+  // Start counting from 1 month after the start date
+  let current = buildAlignedDate(startDate.getFullYear(), startDate.getMonth() + 1, dueDay);
 
   while (current <= endDate) {
     count += 1;
@@ -216,11 +217,11 @@ export default function App() {
 
     const calculations = [
       ['Monthly Instalment (M)', { formula: 'ROUND(PMT(B9/12, B10, -B8), 2)' }], // B15
-      ['Instalments Due (N)', { formula: 'DATEDIF(B6, B7, "m") + 1' }], // B16
+      ['Instalments Due (N)', { formula: 'DATEDIF(B6, B7, "m")' }], // B16
       ['Expected Total (E = N * M)', { formula: 'B15 * B16' }], // B17
       ['Total Paid (P)', { formula: 'SUM(Ledger!D:D)' }], // B18
       ['Catch-up Amount (E - P)', { formula: 'MAX(0, B17 - B18)' }], // B19
-      ['VAT Adjustment Amount', { formula: 'ROUND(((B8-SUMIFS(Ledger!D:D, Ledger!A:A, "<"&B12))/1.15) * (B11 - 0.15), 2)' }], // B20
+      ['VAT Adjustment Amount', { formula: 'ROUND(((B8-SUMIFS(Ledger!D:D, Ledger!A:A, "<="&B6))/1.15) * (B11 - 0.15), 2)' }], // B20
       ['Revised Property Value', { formula: 'B8 + B20' }], // B21
       ['Remaining Balance', { formula: 'B21 + SUM(Ledger!C:C) - SUM(Ledger!D:D)' }], // B22
     ];
@@ -475,7 +476,8 @@ export default function App() {
     }
 
     for (let instalmentNumber = 1; instalmentNumber <= instalmentsDue; instalmentNumber += 1) {
-      const dueDate = buildAlignedDate(start.getFullYear(), start.getMonth() + instalmentNumber - 1, dueDay);
+      // First instalment (n=1) is due 1 month after the start date
+      const dueDate = buildAlignedDate(start.getFullYear(), start.getMonth() + instalmentNumber, dueDay);
       const dueDateKey = toISODate(dueDate);
       const expectedPaid = Number((instalmentNumber * minimumInstalment).toFixed(2));
       const paidByDueDate = payments
