@@ -155,80 +155,57 @@ export default function App() {
 
     // Helper to create currency cell
     const curr = (v: number) => ({v, t: 'n', z: '$#,##0.00'});
-    // Helper to create number cell
-    const num = (v: number) => ({v, t: 'n'});
     // Helper to create percentage cell
-    const pct = (v: number) => ({v, t: 'n', z: '0.0"%"'});
+    const pct = (v: number) => ({v, t: 'n', z: '0.00"%"'});
+    // Helper to create a formula cell
+    const form = (f: string, z: string = '$#,##0.00') => ({f, t: 'n', z});
 
-    // 1. Summary Sheet
+    // 1. Summary Sheet (Inputs & Main Calculations)
     const summaryData = [
       [{v: 'NORTHGATE ESTATES - ACCOUNT SIMULATION', t: 's'}],
       ['Exported on:', new Date().toLocaleString()],
       [''],
-      [{v: 'CLIENT INFORMATION', t: 's'}],
-      ['Name', client.name],
-      ['Stand Number', client.standNum],
-      ['Stand Size', `${client.standSize} m2`],
-      ['Contact', client.contact],
+      [{v: 'INPUT PARAMETERS (Edit these to update formulas)', t: 's'}],
+      ['Original Property Value', curr(client.propValue)], // B5
+      ['Annual Interest Rate', pct(config.annualRate)], // B6
+      ['Loan Duration (Months)', {v: config.loanMonths, t: 'n'}], // B7
+      ['New VAT Rate', pct(config.vatRate)], // B8
+      ['Paid Before VAT Date', curr(result.totalPaid - (result.ledger.find(l => l.type === 'special')?.debit ?? 0))], // B9 (Approx)
       [''],
-      [{v: 'FINANCIAL SUMMARY', t: 's'}],
-      ['Original Property Value', curr(client.propValue)],
-      ['Revised Property Value (USD)', curr(result.revisedValue)],
-      ['Total Amount Paid (USD)', curr(result.totalPaid)],
-      ['Monthly Instalment (Minimum)', curr(result.minMonthlyInstalment)],
-      ['Catch-up Amount', curr(result.catchUpAmount)],
+      [{v: 'LIVE CALCULATIONS', t: 's'}],
+      ['Calculated Monthly Instalment', form('ROUND(PMT(B6/1200, B7, -B5), 2)')], // B12
+      ['VAT Adjustment Amount', form('ROUND(((B5-B9)/1.15) * (B8/100 - 0.15), 2)')], // B13
+      ['Revised Property Value', form('B5 + B13')], // B14
+      [''],
       ['Status', result.status],
-      ['Remaining Balance', curr(result.remainingBalance)],
-      [''],
-      [{v: 'CONFIGURATION', t: 's'}],
-      ['Annual Interest Rate', pct(config.annualRate)],
-      ['VAT Rate', pct(config.vatRate)],
-      ['VAT Change Date', config.vatDate],
-      ['Loan Duration', `${config.loanMonths} Months`],
-      ['Statement Date', config.stmtDate],
     ];
     const wsSummary = utils.aoa_to_sheet(summaryData);
     wsSummary['!cols'] = [{wch: 30}, {wch: 30}];
     utils.book_append_sheet(wb, wsSummary, 'Summary');
 
-    // 2. Ledger Sheet
-    const ledgerHeader = ['Date', 'Details', 'Debit (USD)', 'Credit (USD)', 'Running Balance'];
-    const ledgerRows = result.ledger.map((entry) => [
-      entry.date,
-      entry.details,
-      entry.debit !== null ? curr(entry.debit) : '-',
-      entry.credit !== null ? curr(entry.credit) : '-',
-      curr(entry.balance),
-    ]);
+    // 2. Ledger Sheet (With Running Balance Formulas)
+    const ledgerHeader = ['Date', 'Details', 'Debit (+)', 'Credit (-)', 'Running Balance'];
+    const ledgerRows = result.ledger.map((entry, idx) => {
+      const rowNum = idx + 2;
+      const dateCell = entry.date;
+      const detailCell = entry.details;
+      const debitCell = entry.debit !== null ? curr(entry.debit) : {v: 0, t: 'n', z: '$#,##0.00'};
+      const creditCell = entry.credit !== null ? curr(entry.credit) : {v: 0, t: 'n', z: '$#,##0.00'};
+      
+      // Balance formula: Previous Balance + Debit - Credit
+      let balanceCell;
+      if (idx === 0) {
+        balanceCell = curr(entry.balance); // Opening balance is static
+      } else {
+        balanceCell = form(`E${rowNum - 1}+C${rowNum}-D${rowNum}`);
+      }
+
+      return [dateCell, detailCell, debitCell, creditCell, balanceCell];
+    });
+
     const wsLedger = utils.aoa_to_sheet([ledgerHeader, ...ledgerRows]);
-
-    // Auto-size columns for ledger
     wsLedger['!cols'] = [{wch: 12}, {wch: 35}, {wch: 15}, {wch: 15}, {wch: 18}];
-
     utils.book_append_sheet(wb, wsLedger, 'Ledger');
-
-    // 3. Formula Guide
-    const formulaData = [
-      [{v: 'EXCEL FORMULA GUIDE', t: 's'}],
-      ['Use these formulas to recreate the logic in your own Excel sheet'],
-      [''],
-      ['Component', 'Formula Logic', 'Description'],
-      ['Monthly Instalment', '=ROUND(PMT(InterestRate/12, Months, -Principal), 2)', 'Calculates the fixed monthly payment'],
-      [
-        'VAT Adjustment',
-        '=ROUND(((Principal - PaidBeforeDate)/1.15) * (NewRate - 0.15), 2)',
-        'Calculates the cost increase due to VAT hike',
-      ],
-      ['Daily Interest', '=Balance * (AnnualRate / 360)', 'Calculates interest accrued each day (360-day basis)'],
-      [''],
-      ['VAT Calculation Breakdown:', '', ''],
-      ['1. Net Value', '=RemainingPrincipal / 1.15', 'Extracts net price by removing 15% VAT'],
-      ['2. Adjustment', '=NetValue * (NewRate - 0.15)', 'Applies 0.5% increase to the net portion'],
-      ['3. New Total', '=OriginalValue + Adjustment', 'Final adjusted property value'],
-    ];
-    const wsFormulas = utils.aoa_to_sheet(formulaData);
-    wsFormulas['!cols'] = [{wch: 25}, {wch: 60}, {wch: 50}];
-    utils.book_append_sheet(wb, wsFormulas, 'Formula Guide');
 
     writeFile(wb, `Northgate_Statement_${client.name.replace(/\s+/g, '_')}.xlsx`);
   };
