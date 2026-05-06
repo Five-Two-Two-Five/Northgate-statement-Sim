@@ -1,6 +1,7 @@
 import {AnimatePresence, motion} from 'motion/react';
-import {LayoutDashboard, Printer, Trash2} from 'lucide-react';
+import {FileSpreadsheet, LayoutDashboard, Printer, Trash2} from 'lucide-react';
 import {type ReactNode, useMemo, useState} from 'react';
+import { utils, writeFile } from 'xlsx';
 import {
   AccountStatus,
   type ClientInfo,
@@ -145,6 +146,80 @@ export default function App() {
 
   const resetPayments = () => {
     setPayments(DEFAULT_PAYMENTS);
+  };
+
+  const exportToExcel = () => {
+    if (!result) return;
+
+    const wb = utils.book_new();
+
+    // 1. Summary Sheet
+    const summaryData = [
+      ['NORTHGATE ESTATES - ACCOUNT SIMULATION'],
+      ['Exported on:', new Date().toLocaleString()],
+      [''],
+      ['CLIENT INFORMATION'],
+      ['Name', client.name],
+      ['Stand Number', client.standNum],
+      ['Stand Size', `${client.standSize} m2`],
+      ['Contact', client.contact],
+      [''],
+      ['FINANCIAL SUMMARY'],
+      ['Original Property Value', client.propValue],
+      ['Revised Property Value (USD)', result.revisedValue],
+      ['Total Amount Paid (USD)', result.totalPaid],
+      ['Monthly Instalment (Minimum)', result.minMonthlyInstalment],
+      ['Catch-up Amount', result.catchUpAmount],
+      ['Status', result.status],
+      ['Remaining Balance', result.remainingBalance],
+      [''],
+      ['CONFIGURATION'],
+      ['Annual Interest Rate', `${config.annualRate}%`],
+      ['VAT Rate', `${config.vatRate}%`],
+      ['VAT Change Date', config.vatDate],
+      ['Loan Duration', `${config.loanMonths} Months`],
+      ['Statement Date', config.stmtDate],
+    ];
+    const wsSummary = utils.aoa_to_sheet(summaryData);
+    utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+    // 2. Ledger Sheet
+    const ledgerHeader = ['Date', 'Details', 'Debit (USD)', 'Credit (USD)', 'Running Balance'];
+    const ledgerRows = result.ledger.map((entry) => [
+      entry.date,
+      entry.details,
+      entry.debit ?? 0,
+      entry.credit ?? 0,
+      entry.balance,
+    ]);
+    const wsLedger = utils.aoa_to_sheet([ledgerHeader, ...ledgerRows]);
+
+    // Auto-size columns for ledger
+    wsLedger['!cols'] = [{wch: 12}, {wch: 30}, {wch: 15}, {wch: 15}, {wch: 18}];
+
+    utils.book_append_sheet(wb, wsLedger, 'Ledger');
+
+    // 3. Formula Guide
+    const formulaData = [
+      ['EXCEL FORMULA GUIDE'],
+      ['Use these formulas to recreate the logic in your own Excel sheet'],
+      [''],
+      ['Component', 'Formula Logic', 'Description'],
+      ['Monthly Instalment', '=ROUND(PMT(InterestRate/12, Months, -Principal), 2)', 'Calculates the fixed monthly payment'],
+      [
+        'VAT Adjustment',
+        '=ROUND(((Principal - PaidBeforeDate)/1.15) * (NewRate - 0.15), 2)',
+        'Calculates the cost increase due to VAT hike',
+      ],
+      ['Daily Interest', '=Balance * (AnnualRate / 360)', 'Calculates interest accrued each day (360-day basis)'],
+      [''],
+      ['Note:', 'The simulator uses a 360-day convention for interest calculation, common in financial contracts.'],
+    ];
+    const wsFormulas = utils.aoa_to_sheet(formulaData);
+    wsFormulas['!cols'] = [{wch: 20}, {wch: 60}, {wch: 40}];
+    utils.book_append_sheet(wb, wsFormulas, 'Formula Guide');
+
+    writeFile(wb, `Northgate_Statement_${client.name.replace(/\s+/g, '_')}.xlsx`);
   };
 
   const result = useMemo<SimulationResult | null>(() => {
@@ -564,6 +639,12 @@ export default function App() {
           </Section>
 
           <div className="space-y-3 pt-6">
+            <button
+              onClick={exportToExcel}
+              className="flex w-full items-center justify-center gap-2 rounded bg-[#1e295b] py-3 text-xs font-bold uppercase tracking-widest text-white shadow-lg transition-all hover:bg-[#2a3a7b] hover:shadow-blue-200"
+            >
+              <FileSpreadsheet size={16} /> Export to Excel
+            </button>
             <button
               onClick={() => window.print()}
               className="flex w-full items-center justify-center gap-2 rounded bg-[#d40000] py-3 text-xs font-bold uppercase tracking-widest text-white shadow-lg transition-all hover:shadow-red-200"
