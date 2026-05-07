@@ -13,18 +13,13 @@ import {
   type SimulationResult,
 } from './types';
 
-export enum ClientType {
-  STAFF = 'Staff',
-}
-
-const DEFAULT_CLIENT: ClientInfo & {clientType: ClientType} = {
+const DEFAULT_CLIENT: ClientInfo = {
   name: 'Kundai Pauline Kaseke',
   standNum: '3034',
   standSize: 501,
   contact: '+263774793918',
   propValue: 43211.25,
   startDate: '2025-05-21',
-  clientType: ClientType.STAFF,
 };
 
 const DEFAULT_CONFIG: SimulationConfig = {
@@ -553,20 +548,7 @@ export default function App() {
       <div className="grid min-h-[calc(100vh-68px)] grid-cols-[360px_1fr] print:block">
         <aside className="sticky top-[68px] max-h-[calc(100vh-68px)] overflow-y-auto border-r border-gray-200 bg-white p-6 shadow-sm no-print">
           <Section title="Property Context">
-            <Field label="Client Type">
-              <div className="flex gap-2 p-1 bg-gray-100 rounded-md">
-                <button
-                  key={type}
-                  onClick={() => setClient({ ...client, clientType: type })}
-                  className={`flex-1 py-1 text-[10px] font-bold uppercase tracking-wider rounded transition-all ${
-                    client.clientType === type
-                      ? 'bg-[#1e295b] text-white shadow-sm'
-                      : 'text-gray-500 hover:text-[#1e295b]'
-                  }`}
-                >
-                  {type}
-                </button>              </div>
-            </Field>
+
             <Field label="Client Name">
               <input value={client.name} onChange={(event) => setClient({...client, name: event.target.value})} />
             </Field>
