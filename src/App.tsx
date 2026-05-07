@@ -15,7 +15,6 @@ import {
 
 export enum ClientType {
   STAFF = 'Staff',
-  NON_STAFF = 'Non-Staff',
 }
 
 const DEFAULT_CLIENT: ClientInfo & {clientType: ClientType} = {
@@ -25,7 +24,7 @@ const DEFAULT_CLIENT: ClientInfo & {clientType: ClientType} = {
   contact: '+263774793918',
   propValue: 43211.25,
   startDate: '2025-05-21',
-  clientType: ClientType.NON_STAFF,
+  clientType: ClientType.STAFF,
 };
 
 const DEFAULT_CONFIG: SimulationConfig = {
@@ -402,19 +401,7 @@ export default function App() {
           if (event.type === 'payment') {
             const roundedInterest = Number(accruedInterest.toFixed(2));
             // This entire block is removed:
-            // if (client.clientType === ClientType.NON_STAFF && roundedInterest > 0) {
-            //   balance = Number((balance + roundedInterest).toFixed(2));
-            //   totalInterest += roundedInterest;
-            //   ledger.push({
-            //     date: dateKey,
-            //     details: 'Interest accrued',
-            //     debit: roundedInterest,
-            //     credit: null,
-            //     balance,
-            //     type: 'interest',
-            //   });
-            //   accruedInterest = 0;
-            // }
+                        
 
             balance = Number((balance - event.amount).toFixed(2));
             totalPaid += event.amount;
@@ -568,20 +555,17 @@ export default function App() {
           <Section title="Property Context">
             <Field label="Client Type">
               <div className="flex gap-2 p-1 bg-gray-100 rounded-md">
-                {Object.values(ClientType).map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => setClient({ ...client, clientType: type })}
-                    className={`flex-1 py-1 text-[10px] font-bold uppercase tracking-wider rounded transition-all ${
-                      client.clientType === type
-                        ? 'bg-[#1e295b] text-white shadow-sm'
-                        : 'text-gray-500 hover:text-[#1e295b]'
-                    }`}
-                  >
-                    {type}
-                  </button>
-                ))}
-              </div>
+                <button
+                  key={type}
+                  onClick={() => setClient({ ...client, clientType: type })}
+                  className={`flex-1 py-1 text-[10px] font-bold uppercase tracking-wider rounded transition-all ${
+                    client.clientType === type
+                      ? 'bg-[#1e295b] text-white shadow-sm'
+                      : 'text-gray-500 hover:text-[#1e295b]'
+                  }`}
+                >
+                  {type}
+                </button>              </div>
             </Field>
             <Field label="Client Name">
               <input value={client.name} onChange={(event) => setClient({...client, name: event.target.value})} />
