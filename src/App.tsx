@@ -19,34 +19,32 @@ export enum ClientType {
 }
 
 const DEFAULT_CLIENT: ClientInfo & {clientType: ClientType} = {
-  name: 'Rumbidzai Gadaga',
-  standNum: '5034',
-  standSize: 400,
-  contact: '0779601234',
-  propValue: 29900,
-  startDate: '2025-04-22',
-  clientType: ClientType.STAFF,
+  name: 'Kundai Pauline Kaseke',
+  standNum: '3034',
+  standSize: 501,
+  contact: '+263774793918',
+  propValue: 43211.25,
+  startDate: '2025-05-21',
+  clientType: ClientType.NON_STAFF,
 };
 
 const DEFAULT_CONFIG: SimulationConfig = {
-  stmtDate: '2026-05-05',
+  stmtDate: '2026-05-07',
   annualRate: 8,
   vatRate: 15.5,
   vatDate: '2026-01-01',
-  bookingFee: 0,
+  bookingFee: 50.00,
   loanMonths: 78,
 };
 
 const DEFAULT_PAYMENTS: Payment[] = [
-  {id: crypto.randomUUID(), date: '2025-06-19', amount: 700.00},
-  {id: crypto.randomUUID(), date: '2025-07-14', amount: 700.00},
-  {id: crypto.randomUUID(), date: '2025-08-16', amount: 700.00},
-  {id: crypto.randomUUID(), date: '2025-09-19', amount: 700.00},
-  {id: crypto.randomUUID(), date: '2025-11-14', amount: 800.00},
-  {id: crypto.randomUUID(), date: '2025-12-19', amount: 1000.00},
-  {id: crypto.randomUUID(), date: '2026-02-16', amount: 1000.00},
-  {id: crypto.randomUUID(), date: '2026-03-27', amount: 500.00},
-  {id: crypto.randomUUID(), date: '2026-04-17', amount: 500.00},
+  {id: '1', date: '2025-04-22', amount: 1000},
+  {id: '2', date: '2025-05-09', amount: 1000},
+  {id: '3', date: '2025-07-24', amount: 1000},
+  {id: '4', date: '2025-09-26', amount: 1000},
+  {id: '5', date: '2025-11-29', amount: 1000},
+  {id: '6', date: '2026-02-28', amount: 500},
+  {id: '7', date: '2026-03-05', amount: 467},
 ];
 
 type Event =
@@ -403,19 +401,20 @@ export default function App() {
         for (const event of eventMap[dateKey]) {
           if (event.type === 'payment') {
             const roundedInterest = Number(accruedInterest.toFixed(2));
-            if (client.clientType === ClientType.NON_STAFF && roundedInterest > 0) {
-              balance = Number((balance + roundedInterest).toFixed(2));
-              totalInterest += roundedInterest;
-              ledger.push({
-                date: dateKey,
-                details: 'Interest accrued',
-                debit: roundedInterest,
-                credit: null,
-                balance,
-                type: 'interest',
-              });
-              accruedInterest = 0;
-            }
+            // This entire block is removed:
+            // if (client.clientType === ClientType.NON_STAFF && roundedInterest > 0) {
+            //   balance = Number((balance + roundedInterest).toFixed(2));
+            //   totalInterest += roundedInterest;
+            //   ledger.push({
+            //     date: dateKey,
+            //     details: 'Interest accrued',
+            //     debit: roundedInterest,
+            //     credit: null,
+            //     balance,
+            //     type: 'interest',
+            //   });
+            //   accruedInterest = 0;
+            // }
 
             balance = Number((balance - event.amount).toFixed(2));
             totalPaid += event.amount;
@@ -1180,6 +1179,37 @@ function dueDaySuffix(startDate: string) {
 }
 
 function remainingPrincipal(client: ClientInfo, config: SimulationConfig, payments: Payment[]) {
+  const paidBeforeVat = payments
+    .filter((payment) => payment.date < config.vatDate)
+    .reduce((sum, payment) => sum + payment.amount, 0);
+
+  return Math.max(0, client.propValue - paidBeforeVat);
+}
+eVat);
+}
+ationConfig, payments: Payment[]) {
+  const paidBeforeVat = payments
+    .filter((payment) => payment.date < config.vatDate)
+    .reduce((sum, payment) => sum + payment.amount, 0);
+
+  return Math.max(0, client.propValue - paidBeforeVat);
+}
+
+}
+eVat);
+}
+ationConfig, payments: Payment[]) {
+  const paidBeforeVat = payments
+    .filter((payment) => payment.date < config.vatDate)
+    .reduce((sum, payment) => sum + payment.amount, 0);
+
+  return Math.max(0, client.propValue - paidBeforeVat);
+}
+
+}
+eVat);
+}
+ationConfig, payments: Payment[]) {
   const paidBeforeVat = payments
     .filter((payment) => payment.date < config.vatDate)
     .reduce((sum, payment) => sum + payment.amount, 0);
