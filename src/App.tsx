@@ -1,6 +1,7 @@
 import {AnimatePresence, motion} from 'motion/react';
 import {FileSpreadsheet, LayoutDashboard, Printer, Trash2} from 'lucide-react';
 import {type ReactNode, useMemo, useState} from 'react';
+import {Link} from 'react-router-dom';
 import ExcelJS from 'exceljs';
 import {
   AccountStatus,
@@ -540,8 +541,16 @@ export default function App() {
           <h1 className="text-sm font-black uppercase tracking-tight">Northgate Estates</h1>
           <p className="text-[9px] font-bold uppercase tracking-[0.3em] opacity-80">Document Simulator</p>
         </div>
-        <div className="ml-auto rounded border border-white/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest">
-          PDF Match Pro
+        <div className="ml-auto flex items-center gap-3">
+          <Link
+            to="/empty"
+            className="rounded border border-white/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest transition-colors hover:bg-white/10"
+          >
+            Empty Page
+          </Link>
+          <div className="rounded border border-white/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest">
+            PDF Match Pro
+          </div>
         </div>
       </header>
 
