@@ -1151,34 +1151,3 @@ function remainingPrincipal(client: ClientInfo, config: SimulationConfig, paymen
 
   return Math.max(0, client.propValue - paidBeforeVat);
 }
-eVat);
-}
-ationConfig, payments: Payment[]) {
-  const paidBeforeVat = payments
-    .filter((payment) => payment.date < config.vatDate)
-    .reduce((sum, payment) => sum + payment.amount, 0);
-
-  return Math.max(0, client.propValue - paidBeforeVat);
-}
-
-}
-eVat);
-}
-ationConfig, payments: Payment[]) {
-  const paidBeforeVat = payments
-    .filter((payment) => payment.date < config.vatDate)
-    .reduce((sum, payment) => sum + payment.amount, 0);
-
-  return Math.max(0, client.propValue - paidBeforeVat);
-}
-
-}
-eVat);
-}
-ationConfig, payments: Payment[]) {
-  const paidBeforeVat = payments
-    .filter((payment) => payment.date < config.vatDate)
-    .reduce((sum, payment) => sum + payment.amount, 0);
-
-  return Math.max(0, client.propValue - paidBeforeVat);
-}
