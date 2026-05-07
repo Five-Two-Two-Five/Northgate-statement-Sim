@@ -38,13 +38,15 @@ const DEFAULT_CONFIG: SimulationConfig = {
 };
 
 const DEFAULT_PAYMENTS: Payment[] = [
-  {id: '1', date: '2025-04-22', amount: 1000},
-  {id: '2', date: '2025-05-09', amount: 1000},
-  {id: '3', date: '2025-07-24', amount: 1000},
-  {id: '4', date: '2025-09-26', amount: 1000},
-  {id: '5', date: '2025-11-29', amount: 1000},
-  {id: '6', date: '2026-02-28', amount: 500},
-  {id: '7', date: '2026-03-05', amount: 467},
+  {id: crypto.randomUUID(), date: '2025-06-19', amount: 700.00},
+  {id: crypto.randomUUID(), date: '2025-07-14', amount: 700.00},
+  {id: crypto.randomUUID(), date: '2025-08-16', amount: 700.00},
+  {id: crypto.randomUUID(), date: '2025-09-19', amount: 700.00},
+  {id: crypto.randomUUID(), date: '2025-11-14', amount: 800.00},
+  {id: crypto.randomUUID(), date: '2025-12-19', amount: 1000.00},
+  {id: crypto.randomUUID(), date: '2026-02-16', amount: 1000.00},
+  {id: crypto.randomUUID(), date: '2026-03-27', amount: 500.00},
+  {id: crypto.randomUUID(), date: '2026-04-17', amount: 500.00},
 ];
 
 type Event =
